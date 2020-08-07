@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -27,6 +29,7 @@ class ActivateVoiceButton extends HookWidget {
 
   @override
   Widget build(BuildContext context) {
+    final fullWidth = MediaQuery.of(context).size.width;
     final listening = useProvider(listeningProvider).state;
 
     return AnimatedContainer(
@@ -50,14 +53,65 @@ class ActivateVoiceButton extends HookWidget {
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 250),
             height: listening ? 100 : 50,
-            width: listening ? MediaQuery.of(context).size.width : 100,
-            child: Icon(
-              Icons.mic,
-              color: Colors.white,
-            ),
+            width: listening ? fullWidth : 100,
+            child: listening
+                ? SoundWaves()
+                : Icon(
+                    Icons.mic,
+                    color: Colors.white,
+                  ),
           ),
         ),
       ),
+    );
+  }
+}
+
+class SoundWaves extends HookWidget {
+  SoundWaves({Key key}) : super(key: key);
+
+  static const double barWidth = 3;
+  static const double barHeight = 5;
+  static const double spaceWidth = 2;
+
+  final rng = Random();
+
+  @override
+  Widget build(BuildContext context) {
+    final fullWidth = MediaQuery.of(context).size.width;
+    final test = useState(false);
+
+    useEffect(() {
+      context.read(listeningProvider).addListener((state) async {
+        while (state) {
+          try {
+            test.value = !test.value;
+          } catch (e) {
+            break;
+          }
+          await Future.delayed(const Duration(milliseconds: 250));
+        }
+      });
+      return;
+    }, const []);
+
+    return ListView.separated(
+      itemCount: (fullWidth / (SoundWaves.barWidth + SoundWaves.spaceWidth)).ceil(),
+      scrollDirection: Axis.horizontal,
+      physics: const NeverScrollableScrollPhysics(),
+      itemBuilder: (_, int index) {
+        return Center(
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 250),
+            color: Colors.white,
+            height: test.value
+                ? SoundWaves.barHeight + rng.nextInt(75)
+                : SoundWaves.barHeight + rng.nextInt(75),
+            width: SoundWaves.barWidth,
+          ),
+        );
+      },
+      separatorBuilder: (_, __) => SizedBox(width: SoundWaves.spaceWidth),
     );
   }
 }
