@@ -23,6 +23,11 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_hooks: ^0.13.0
+  hooks_riverpod: ^0.6.0-dev+2
+  state_notifier: ^0.6.0
+  speech_to_text: ^2.4.1
+  flutter_tts: ^1.2.6
 
 
   # The following adds the Cupertino Icons font to your application.
