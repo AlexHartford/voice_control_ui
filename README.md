@@ -1,2 +1,2 @@
 # voice_control_ui
-POC to control Flutter UI with voice input conversationally. Handle simple intents directly, send complex queries to DialogFlow and mutate app state accordingly.
+Attempt to control a Flutter UI conversationally using IBM Watson for intent recognition, entity capturing, and fulfillment to and mutate app state accordingly.
