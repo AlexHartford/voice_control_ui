@@ -7,16 +7,10 @@ import 'package:speech_to_text/speech_recognition_event.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 import 'package:speech_to_text/speech_to_text_provider.dart';
 
-final sttProvider = FutureProvider<SpeechToTextProvider>((_) async {
-  final stt = SpeechToTextProvider(SpeechToText());
-  print(stt);
-  final available = await stt.initialize();
-  print('available? $available');
-  print(stt.isListening);
-  stt.listen();
-  print(stt.isListening);
-  return stt;
-});
+final sttProvider = Provider<SpeechToTextProvider>((_) => SpeechToTextProvider(SpeechToText()));
+
+final sttInitProvider =
+    FutureProvider<bool>((ref) async => await ref.read(sttProvider).initialize());
 
 final listeningProvider = StateProvider<bool>((_) => false);
 
@@ -52,15 +46,18 @@ class TabViews extends HookWidget {
 
   @override
   Widget build(BuildContext context) {
-    final stt = useProvider(sttProvider);
-    return stt.when(
+    final sttAvailable = useProvider(sttInitProvider);
+
+    return sttAvailable.when(
       loading: () => Center(
         child: CircularProgressIndicator(),
       ),
       error: (err, stack) => Center(
-        child: Text(err),
+        child: Text(
+          'Speech recognition not available.\n$err',
+        ),
       ),
-      data: (stt) => Stack(
+      data: (_) => Stack(
         children: [
           TabBarView(
             controller: controller,
@@ -75,7 +72,7 @@ class TabViews extends HookWidget {
               //     child: Text('Home'),
               //   ),
               // ),
-              CurrentText(stt),
+              CurrentText(),
               Container(
                 child: Center(
                   child: Text('Search'),
@@ -100,6 +97,20 @@ class ActivateVoiceButton extends HookWidget {
   Widget build(BuildContext context) {
     final fullWidth = MediaQuery.of(context).size.width;
     final listening = useProvider(listeningProvider).state;
+
+    useEffect(() {
+      final stt = context.read(sttProvider);
+      context.read(listeningProvider).addListener((state) async {
+        if (state) {
+          stt.listen(partialResults: true);
+          print('Listening');
+        } else {
+          if (stt.isListening) stt.stop();
+          print('Not listening');
+        }
+      });
+      return;
+    }, const []);
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 250),
@@ -136,28 +147,8 @@ class ActivateVoiceButton extends HookWidget {
   }
 }
 
-// final sttStreamProvider = StreamProvider.autoDispose<SpeechRecognitionEvent>((ref) {
-//   final stt = ref.read(sttProvider);
-
-//   return stt.when(
-//     data: (data) => data.stream,
-//     error: (err, stack) {
-//       print('error');
-//       return null;
-//     },
-//     loading: () {
-//       print('loading');
-//       return null;
-//     },
-//   );
-//   // return stt.whenData((value) => value.stream)
-//   // print(stt.isAvailable);
-//   // print(stt.isListening);
-//   // return stt.stream;
-// });
-
-final sttStreamProvider =
-    StreamProvider.family.autoDispose<SpeechRecognitionEvent, SpeechToTextProvider>((ref, stt) {
+final sttStreamProvider = StreamProvider.autoDispose<SpeechRecognitionEvent>((ref) {
+  final stt = ref.read(sttProvider);
   if (stt.isAvailable) {
     print('init');
     return stt.stream;
@@ -168,27 +159,21 @@ final sttStreamProvider =
 });
 
 class CurrentText extends HookWidget {
-  const CurrentText(this.stt, {Key key}) : super(key: key);
-
-  final SpeechToTextProvider stt;
+  const CurrentText({Key key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    final stream = useProvider(sttStreamProvider(stt));
-    print(stream.data);
-    // print(stream);
+    final stream = useProvider(sttStreamProvider);
 
-    return Container();
-
-    // return stream.when(
-    //   data: (data) => Center(
-    //     child: Text(
-    //       data.recognitionResult.recognizedWords,
-    //     ),
-    //   ),
-    //   loading: () => Center(child: CircularProgressIndicator()),
-    //   error: (err, stack) => Text(err),
-    // );
+    return stream.when(
+      data: (data) => Center(
+        child: Text(
+          data.recognitionResult != null ? data.recognitionResult.recognizedWords : '',
+        ),
+      ),
+      loading: () => Center(child: CircularProgressIndicator()),
+      error: (err, stack) => Text(err),
+    );
   }
 }
 
@@ -216,13 +201,6 @@ class SoundWaves extends HookWidget {
           }
           await Future.delayed(const Duration(milliseconds: 250));
         }
-      });
-      return;
-    }, const []);
-
-    useEffect(() {
-      context.read(listeningProvider).addListener((state) async {
-        if (state) {}
       });
       return;
     }, const []);
