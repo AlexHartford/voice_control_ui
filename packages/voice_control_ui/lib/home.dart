@@ -9,9 +9,41 @@ class Home extends HookWidget {
 
   @override
   Widget build(BuildContext context) {
+    final controller = useTabController(initialLength: 3, initialIndex: 1);
+
     return Scaffold(
+      appBar: AppBar(
+        bottom: TabBar(
+          controller: controller,
+          tabs: [
+            Tab(key: PageStorageKey('Scan'), text: 'Scan'),
+            Tab(key: PageStorageKey('Home'), text: 'Home'),
+            Tab(key: PageStorageKey('Search'), text: 'Search'),
+          ],
+        ),
+      ),
       body: Stack(
         children: [
+          TabBarView(
+            controller: controller,
+            children: [
+              Container(
+                child: Center(
+                  child: Text('Scan'),
+                ),
+              ),
+              Container(
+                child: Center(
+                  child: Text('Home'),
+                ),
+              ),
+              Container(
+                child: Center(
+                  child: Text('Search'),
+                ),
+              ),
+            ],
+          ),
           Align(
             alignment: Alignment.bottomCenter,
             child: ActivateVoiceButton(),
