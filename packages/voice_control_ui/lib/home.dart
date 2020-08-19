@@ -6,13 +6,72 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:speech_to_text/speech_recognition_event.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 import 'package:speech_to_text/speech_to_text_provider.dart';
+import 'package:voice_control_ui/chatbot.dart';
 
 final sttProvider = Provider<SpeechToTextProvider>((_) => SpeechToTextProvider(SpeechToText()));
 
 final sttInitProvider =
-    FutureProvider<bool>((ref) async => await ref.read(sttProvider).initialize());
+    FutureProvider<bool>((ref) async => await ref.watch(sttProvider).initialize());
+
+final sttStreamProvider = StreamProvider.autoDispose<SpeechRecognitionEvent>((ref) {
+  final stt = ref.watch(sttProvider);
+  if (stt.isAvailable) {
+    debugPrint('Initialized speech-to-text stream');
+    return stt.stream;
+  } else {
+    throw Exception('Failed to initialize speech-to-text stream');
+  }
+});
 
 final listeningProvider = StateProvider<bool>((_) => false);
+
+final lastFinishedProvider = StateProvider<String>((_) => 'N/A');
+
+final lastResponseProvider = StateProvider<String>((_) => 'No response yet');
+
+final test = Provider<void>((ref) async {
+  print('testprovider');
+  final stream = ref.watch(sttStreamProvider.stream);
+  final listening = ref.watch(listeningProvider);
+  final lastFinished = ref.watch(lastFinishedProvider);
+  final lastResponse = ref.watch(lastResponseProvider);
+  final chatbot = ref.watch(ChatbotService.provider);
+  final stt = ref.watch(sttProvider)..listen(partialResults: true);
+
+  stream.listen((event) async {
+    print('event: ${event.eventType}');
+    switch (event.eventType) {
+      case SpeechRecognitionEventType.finalRecognitionEvent:
+        if (event.recognitionResult.recognizedWords.contains('popcorn')) {
+          listening.state = false;
+          lastFinished.state = event.recognitionResult.recognizedWords;
+          lastResponse.state = await chatbot.sendInput(lastFinished.state);
+        }
+        stt.listen(partialResults: true);
+        break;
+      case SpeechRecognitionEventType.partialRecognitionEvent:
+        if (event.recognitionResult.recognizedWords.contains('popcorn') && !listening.state) {
+          listening.state = true;
+          print('Waking up!!');
+        } else if (listening.state) {
+          print('Woke up from button press');
+        } else {
+          print('Not waking up to: ${event.recognitionResult.recognizedWords}');
+        }
+        break;
+      case SpeechRecognitionEventType.errorEvent:
+        print('errorEvent: ${event.error}');
+        stt.listen(partialResults: true);
+        break;
+      case SpeechRecognitionEventType.statusChangeEvent:
+        print('Status changed: ${event.isListening ? 'listening' : 'stopped'}');
+        // if (!event.isListening) stt.listen(partialResults: true);
+        break;
+      case SpeechRecognitionEventType.soundLevelChangeEvent:
+        break;
+    }
+  });
+});
 
 class Home extends HookWidget {
   const Home({Key key}) : super(key: key);
@@ -67,12 +126,26 @@ class TabViews extends HookWidget {
                   child: Text('Scan'),
                 ),
               ),
-              // Container(
-              //   child: Center(
-              //     child: Text('Home'),
-              //   ),
-              // ),
-              CurrentText(),
+              Container(
+                child: Center(
+                  child: Card(
+                    color: Colors.grey[600].withOpacity(0.75),
+                    elevation: 8,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
+                    child: Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          CurrentText(),
+                          FinalText(),
+                          ResponseText(),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
               Container(
                 child: Center(
                   child: Text('Search'),
@@ -90,6 +163,39 @@ class TabViews extends HookWidget {
   }
 }
 
+class ResponseText extends HookWidget {
+  const ResponseText({Key key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    final text = useProvider(lastResponseProvider).state;
+
+    return Container(
+      child: Text(
+        text,
+        style: TextStyle(color: Colors.white),
+      ),
+    );
+  }
+}
+
+class FinalText extends HookWidget {
+  const FinalText({Key key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    final text = useProvider(lastFinishedProvider).state;
+    useProvider(test);
+
+    return Container(
+      child: Text(
+        text,
+        style: TextStyle(color: Colors.white),
+      ),
+    );
+  }
+}
+
 class ActivateVoiceButton extends HookWidget {
   const ActivateVoiceButton({Key key}) : super(key: key);
 
@@ -97,20 +203,6 @@ class ActivateVoiceButton extends HookWidget {
   Widget build(BuildContext context) {
     final fullWidth = MediaQuery.of(context).size.width;
     final listening = useProvider(listeningProvider).state;
-
-    useEffect(() {
-      final stt = context.read(sttProvider);
-      context.read(listeningProvider).addListener((state) async {
-        if (state) {
-          stt.listen(partialResults: true);
-          print('Listening');
-        } else {
-          if (stt.isListening) stt.stop();
-          print('Not listening');
-        }
-      });
-      return;
-    }, const []);
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 250),
@@ -147,17 +239,6 @@ class ActivateVoiceButton extends HookWidget {
   }
 }
 
-final sttStreamProvider = StreamProvider.autoDispose<SpeechRecognitionEvent>((ref) {
-  final stt = ref.read(sttProvider);
-  if (stt.isAvailable) {
-    print('init');
-    return stt.stream;
-  } else {
-    print('Not init');
-    return null;
-  }
-});
-
 class CurrentText extends HookWidget {
   const CurrentText({Key key}) : super(key: key);
 
@@ -166,12 +247,22 @@ class CurrentText extends HookWidget {
     final stream = useProvider(sttStreamProvider);
 
     return stream.when(
-      data: (data) => Center(
-        child: Text(
+      data: (data) {
+        return Text(
           data.recognitionResult != null ? data.recognitionResult.recognizedWords : '',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 18,
+          ),
+        );
+      },
+      loading: () => Text(
+        '...',
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: 18,
         ),
       ),
-      loading: () => Center(child: CircularProgressIndicator()),
       error: (err, stack) => Text(err),
     );
   }
