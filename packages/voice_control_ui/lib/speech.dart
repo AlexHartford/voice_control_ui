@@ -55,7 +55,7 @@ class SpeechHandler extends StateNotifier<SpeechState> {
   }
 
   _listen() {
-    final stt = ref.read(sttProvider)..listen(partialResults: true);
+    final stt = ref.read(sttProvider)..listen(partialResults: true, pauseFor: const Duration(seconds: 2));
     final stream = ref.read(sttStreamProvider.stream);
     final chatbot = ref.read(ChatbotService.provider);
 
@@ -78,7 +78,7 @@ class SpeechHandler extends StateNotifier<SpeechState> {
               output: await chatbot.sendInput(text),
             );
           }
-          stt.listen(partialResults: true);
+          stt.listen(partialResults: true, pauseFor: const Duration(seconds: 2));
           break;
         case SpeechRecognitionEventType.partialRecognitionEvent:
           if (event.recognitionResult.recognizedWords.contains(WAKE_WORD) || state.isListening) {
@@ -94,7 +94,7 @@ class SpeechHandler extends StateNotifier<SpeechState> {
           break;
         case SpeechRecognitionEventType.errorEvent:
           print('errorEvent: ${event.error}');
-          stt.listen(partialResults: true);
+          stt.listen(partialResults: true, pauseFor: const Duration(seconds: 2));
           break;
         case SpeechRecognitionEventType.statusChangeEvent:
           print('Status changed: ${event.isListening ? 'listening' : 'stopped'}');
