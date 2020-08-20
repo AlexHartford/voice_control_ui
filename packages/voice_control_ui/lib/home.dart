@@ -55,22 +55,26 @@ class TabViews extends HookWidget {
               controller: controller,
               children: [
                 Container(
-                  child: Center(
-                    child: Text('Scan'),
-                  ),
+                  color: Colors.blue[300],
+                  child: Text('Scan'),
                 ),
-                SpeechDisplay(),
                 Container(
-                  child: Center(
-                    child: Text('Search'),
-                  ),
+                  child: Text('Home'),
+                ),
+                Container(
+                  color: Colors.red[300],
+                  child: Text('Search'),
                 ),
               ],
             ),
             Align(
               alignment: Alignment.bottomCenter,
               child: ActivateVoiceButton(),
-            )
+            ),
+            Align(
+              alignment: Alignment.center,
+              child: SpeechDisplay(),
+            ),
           ],
         );
       },
@@ -168,21 +172,6 @@ class SoundWaves extends HookWidget {
   @override
   Widget build(BuildContext context) {
     final fullWidth = MediaQuery.of(context).size.width;
-    // final stopped = useState(false);
-
-    // useEffect(() {
-    //   context.read(listeningProvider).addListener((state) async {
-    //     while (state) {
-    //       try {
-    //         stopped.value = !stopped.value;
-    //       } catch (e) {
-    //         break;
-    //       }
-    //       await Future.delayed(const Duration(milliseconds: 250));
-    //     }
-    //   });
-    //   return;
-    // }, const []);
 
     return ListView.separated(
       itemCount: (fullWidth / (SoundWaves.barWidth + SoundWaves.spaceWidth)).ceil(),
@@ -194,9 +183,6 @@ class SoundWaves extends HookWidget {
             duration: const Duration(milliseconds: 250),
             color: Colors.white,
             height: SoundWaves.barHeight + rng.nextInt(75),
-            // height: stopped.value
-            //     ? SoundWaves.barHeight + rng.nextInt(75)
-            //     : SoundWaves.barHeight + rng.nextInt(75),
             width: SoundWaves.barWidth,
           ),
         );

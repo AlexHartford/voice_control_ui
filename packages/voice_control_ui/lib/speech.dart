@@ -67,6 +67,12 @@ class SpeechHandler extends StateNotifier<SpeechState> {
             state = SpeechState(
               isListening: false,
               input: text,
+              output: state.output,
+            );
+            // TODO: Add some sort of loading indicator
+            state = SpeechState(
+              isListening: state.isListening,
+              input: state.input,
               output: await chatbot.sendInput(text),
             );
           }
@@ -90,10 +96,6 @@ class SpeechHandler extends StateNotifier<SpeechState> {
           break;
         case SpeechRecognitionEventType.statusChangeEvent:
           print('Status changed: ${event.isListening ? 'listening' : 'stopped'}');
-          // if (!event.isListening) stt.listen(partialResults: true);
-          // if (state.isListening) {
-          //   print('Woke up from button press');
-          // }
           break;
         case SpeechRecognitionEventType.soundLevelChangeEvent:
           break;
