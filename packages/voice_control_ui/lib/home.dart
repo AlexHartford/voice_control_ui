@@ -6,6 +6,7 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:speech_to_text/speech_recognition_event.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 import 'package:speech_to_text/speech_to_text_provider.dart';
+import 'package:state_notifier/state_notifier.dart';
 import 'package:voice_control_ui/chatbot.dart';
 
 final sttProvider = Provider<SpeechToTextProvider>((_) => SpeechToTextProvider(SpeechToText()));
@@ -13,7 +14,7 @@ final sttProvider = Provider<SpeechToTextProvider>((_) => SpeechToTextProvider(S
 final sttInitProvider =
     FutureProvider<bool>((ref) async => await ref.watch(sttProvider).initialize());
 
-final sttStreamProvider = StreamProvider.autoDispose<SpeechRecognitionEvent>((ref) {
+final sttStreamProvider = StreamProvider<SpeechRecognitionEvent>((ref) {
   final stt = ref.watch(sttProvider);
   if (stt.isAvailable) {
     debugPrint('Initialized speech-to-text stream');
@@ -23,55 +24,89 @@ final sttStreamProvider = StreamProvider.autoDispose<SpeechRecognitionEvent>((re
   }
 });
 
-final listeningProvider = StateProvider<bool>((_) => false);
+class SpeechState {
+  bool isListening;
+  String previousInput;
+  String previousOutput;
+  String currentInput;
 
-final lastFinishedProvider = StateProvider<String>((_) => 'N/A');
-
-final lastResponseProvider = StateProvider<String>((_) => 'No response yet');
-
-final test = Provider<void>((ref) async {
-  print('testprovider');
-  final stream = ref.watch(sttStreamProvider.stream);
-  final listening = ref.watch(listeningProvider);
-  final lastFinished = ref.watch(lastFinishedProvider);
-  final lastResponse = ref.watch(lastResponseProvider);
-  final chatbot = ref.watch(ChatbotService.provider);
-  final stt = ref.watch(sttProvider)..listen(partialResults: true);
-
-  stream.listen((event) async {
-    print('event: ${event.eventType}');
-    switch (event.eventType) {
-      case SpeechRecognitionEventType.finalRecognitionEvent:
-        if (event.recognitionResult.recognizedWords.contains('popcorn')) {
-          listening.state = false;
-          lastFinished.state = event.recognitionResult.recognizedWords;
-          lastResponse.state = await chatbot.sendInput(lastFinished.state);
-        }
-        stt.listen(partialResults: true);
-        break;
-      case SpeechRecognitionEventType.partialRecognitionEvent:
-        if (event.recognitionResult.recognizedWords.contains('popcorn') && !listening.state) {
-          listening.state = true;
-          print('Waking up!!');
-        } else if (listening.state) {
-          print('Woke up from button press');
-        } else {
-          print('Not waking up to: ${event.recognitionResult.recognizedWords}');
-        }
-        break;
-      case SpeechRecognitionEventType.errorEvent:
-        print('errorEvent: ${event.error}');
-        stt.listen(partialResults: true);
-        break;
-      case SpeechRecognitionEventType.statusChangeEvent:
-        print('Status changed: ${event.isListening ? 'listening' : 'stopped'}');
-        // if (!event.isListening) stt.listen(partialResults: true);
-        break;
-      case SpeechRecognitionEventType.soundLevelChangeEvent:
-        break;
-    }
+  SpeechState({
+    this.isListening = false,
+    this.previousInput = '',
+    this.previousOutput = '',
+    this.currentInput = '',
   });
-});
+}
+
+class SpeechHandler extends StateNotifier<SpeechState> {
+  SpeechHandler(this.ref) : super(SpeechState()) {
+    print('SpeechHandler init');
+    _listen();
+  }
+
+  final ProviderReference ref;
+
+  static final provider = StateNotifierProvider<SpeechHandler>((ref) => SpeechHandler(ref));
+
+  toggleListening() {
+    state = SpeechState(
+      isListening: !state.isListening,
+      currentInput: state.currentInput,
+      previousInput: state.previousInput,
+      previousOutput: state.previousOutput,
+    );
+  }
+
+  _listen() {
+    final stt = ref.read(sttProvider)..listen(partialResults: true);
+    final stream = ref.read(sttStreamProvider.stream);
+    final chatbot = ref.read(ChatbotService.provider);
+    print('listening');
+
+    stream.listen((event) async {
+      print('event: ${event.eventType}');
+
+      switch (event.eventType) {
+        case SpeechRecognitionEventType.finalRecognitionEvent:
+          if (event.recognitionResult.recognizedWords.contains('popcorn')) {
+            state = SpeechState(
+              isListening: false,
+              previousInput: event.recognitionResult.recognizedWords,
+              previousOutput: await chatbot.sendInput(state.previousOutput),
+              currentInput: state.currentInput,
+            );
+          }
+          stt.listen(partialResults: true);
+          break;
+        case SpeechRecognitionEventType.partialRecognitionEvent:
+          if (event.recognitionResult.recognizedWords.contains('popcorn') && !state.isListening) {
+            state = SpeechState(
+              isListening: true,
+              previousInput: state.previousInput,
+              previousOutput: state.previousOutput,
+              currentInput: event.recognitionResult.recognizedWords,
+            );
+            print('Waking up!!');
+          } else if (state.isListening) {
+            print('Woke up from button press');
+          } else {
+            print('Not waking up to: ${event.recognitionResult.recognizedWords}');
+          }
+          break;
+        case SpeechRecognitionEventType.errorEvent:
+          print('errorEvent: ${event.error}');
+          stt.listen(partialResults: true);
+          break;
+        case SpeechRecognitionEventType.statusChangeEvent:
+          print('Status changed: ${event.isListening ? 'listening' : 'stopped'}');
+          // if (!event.isListening) stt.listen(partialResults: true);
+          break;
+        case SpeechRecognitionEventType.soundLevelChangeEvent:
+          break;
+      }
+    });
+  }
+}
 
 class Home extends HookWidget {
   const Home({Key key}) : super(key: key);
@@ -116,81 +151,70 @@ class TabViews extends HookWidget {
           'Speech recognition not available.\n$err',
         ),
       ),
-      data: (_) => Stack(
-        children: [
-          TabBarView(
-            controller: controller,
-            children: [
-              Container(
-                child: Center(
-                  child: Text('Scan'),
-                ),
-              ),
-              Container(
-                child: Center(
-                  child: Card(
-                    color: Colors.grey[600].withOpacity(0.75),
-                    elevation: 8,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
-                    child: Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          CurrentText(),
-                          FinalText(),
-                          ResponseText(),
-                        ],
-                      ),
-                    ),
+      data: (_) {
+        return Stack(
+          children: [
+            TabBarView(
+              controller: controller,
+              children: [
+                Container(
+                  child: Center(
+                    child: Text('Scan'),
                   ),
                 ),
-              ),
-              Container(
-                child: Center(
-                  child: Text('Search'),
+                SpeechDisplay(),
+                Container(
+                  child: Center(
+                    child: Text('Search'),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
+            Align(
+              alignment: Alignment.bottomCenter,
+              child: ActivateVoiceButton(),
+            )
+          ],
+        );
+      },
+    );
+  }
+}
+
+class SpeechDisplay extends HookWidget {
+  const SpeechDisplay({Key key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    final speech = useProvider(SpeechHandler.provider.state);
+
+    return Container(
+      child: Center(
+        child: Card(
+          color: Colors.grey[600].withOpacity(0.75),
+          elevation: 8,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
+          child: Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  speech.currentInput,
+                  style: TextStyle(color: Colors.white),
+                ),
+                Text(
+                  speech.previousInput,
+                  style: TextStyle(color: Colors.white),
+                ),
+                Text(
+                  speech.previousOutput,
+                  style: TextStyle(color: Colors.white),
+                )
+              ],
+            ),
           ),
-          Align(
-            alignment: Alignment.bottomCenter,
-            child: ActivateVoiceButton(),
-          )
-        ],
-      ),
-    );
-  }
-}
-
-class ResponseText extends HookWidget {
-  const ResponseText({Key key}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    final text = useProvider(lastResponseProvider).state;
-
-    return Container(
-      child: Text(
-        text,
-        style: TextStyle(color: Colors.white),
-      ),
-    );
-  }
-}
-
-class FinalText extends HookWidget {
-  const FinalText({Key key}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    final text = useProvider(lastFinishedProvider).state;
-    useProvider(test);
-
-    return Container(
-      child: Text(
-        text,
-        style: TextStyle(color: Colors.white),
+        ),
       ),
     );
   }
@@ -202,7 +226,8 @@ class ActivateVoiceButton extends HookWidget {
   @override
   Widget build(BuildContext context) {
     final fullWidth = MediaQuery.of(context).size.width;
-    final listening = useProvider(listeningProvider).state;
+    // final listening = useProvider(listeningProvider).state;
+    final listening = useProvider(SpeechHandler.provider.state).isListening;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 250),
@@ -217,7 +242,8 @@ class ActivateVoiceButton extends HookWidget {
           ),
         ),
         child: InkWell(
-          onTap: () => context.read(listeningProvider).state ^= true,
+          // onTap: () => context.read(listeningProvider).state ^= true,
+          onTap: () => context.read(SpeechHandler.provider).toggleListening(),
           borderRadius: BorderRadius.all(
             Radius.circular(listening ? 0 : 25),
           ),
@@ -239,35 +265,6 @@ class ActivateVoiceButton extends HookWidget {
   }
 }
 
-class CurrentText extends HookWidget {
-  const CurrentText({Key key}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    final stream = useProvider(sttStreamProvider);
-
-    return stream.when(
-      data: (data) {
-        return Text(
-          data.recognitionResult != null ? data.recognitionResult.recognizedWords : '',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 18,
-          ),
-        );
-      },
-      loading: () => Text(
-        '...',
-        style: TextStyle(
-          color: Colors.white,
-          fontSize: 18,
-        ),
-      ),
-      error: (err, stack) => Text(err),
-    );
-  }
-}
-
 class SoundWaves extends HookWidget {
   SoundWaves({Key key}) : super(key: key);
 
@@ -280,21 +277,21 @@ class SoundWaves extends HookWidget {
   @override
   Widget build(BuildContext context) {
     final fullWidth = MediaQuery.of(context).size.width;
-    final stopped = useState(false);
+    // final stopped = useState(false);
 
-    useEffect(() {
-      context.read(listeningProvider).addListener((state) async {
-        while (state) {
-          try {
-            stopped.value = !stopped.value;
-          } catch (e) {
-            break;
-          }
-          await Future.delayed(const Duration(milliseconds: 250));
-        }
-      });
-      return;
-    }, const []);
+    // useEffect(() {
+    //   context.read(listeningProvider).addListener((state) async {
+    //     while (state) {
+    //       try {
+    //         stopped.value = !stopped.value;
+    //       } catch (e) {
+    //         break;
+    //       }
+    //       await Future.delayed(const Duration(milliseconds: 250));
+    //     }
+    //   });
+    //   return;
+    // }, const []);
 
     return ListView.separated(
       itemCount: (fullWidth / (SoundWaves.barWidth + SoundWaves.spaceWidth)).ceil(),
@@ -305,9 +302,10 @@ class SoundWaves extends HookWidget {
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 250),
             color: Colors.white,
-            height: stopped.value
-                ? SoundWaves.barHeight + rng.nextInt(75)
-                : SoundWaves.barHeight + rng.nextInt(75),
+            height: SoundWaves.barHeight + rng.nextInt(75),
+            // height: stopped.value
+            //     ? SoundWaves.barHeight + rng.nextInt(75)
+            //     : SoundWaves.barHeight + rng.nextInt(75),
             width: SoundWaves.barWidth,
           ),
         );
