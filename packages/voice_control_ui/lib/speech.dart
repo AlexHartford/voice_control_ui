@@ -8,6 +8,7 @@ import 'package:state_notifier/state_notifier.dart';
 import 'package:voice_control_ui/chatbot.dart';
 
 const WAKE_WORD = 'board';
+const PAUSE_DURATION = Duration(seconds: 1);
 
 final sttProvider = Provider<SpeechToTextProvider>((_) => SpeechToTextProvider(SpeechToText()));
 
@@ -55,7 +56,7 @@ class SpeechHandler extends StateNotifier<SpeechState> {
   }
 
   _listen() {
-    final stt = ref.read(sttProvider)..listen(partialResults: true, pauseFor: const Duration(seconds: 2));
+    final stt = ref.read(sttProvider)..listen(partialResults: true, pauseFor: PAUSE_DURATION);
     final stream = ref.read(sttStreamProvider.stream);
     final chatbot = ref.read(ChatbotService.provider);
 
@@ -78,7 +79,7 @@ class SpeechHandler extends StateNotifier<SpeechState> {
               output: await chatbot.sendInput(text),
             );
           }
-          stt.listen(partialResults: true, pauseFor: const Duration(seconds: 2));
+          stt.listen(partialResults: true, pauseFor: PAUSE_DURATION);
           break;
         case SpeechRecognitionEventType.partialRecognitionEvent:
           if (event.recognitionResult.recognizedWords.contains(WAKE_WORD) || state.isListening) {
@@ -94,7 +95,7 @@ class SpeechHandler extends StateNotifier<SpeechState> {
           break;
         case SpeechRecognitionEventType.errorEvent:
           print('errorEvent: ${event.error}');
-          stt.listen(partialResults: true, pauseFor: const Duration(seconds: 2));
+          stt.listen(partialResults: true, pauseFor: PAUSE_DURATION);
           break;
         case SpeechRecognitionEventType.statusChangeEvent:
           print('Status changed: ${event.isListening ? 'listening' : 'stopped'}');
