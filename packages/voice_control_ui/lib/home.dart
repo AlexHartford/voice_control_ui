@@ -101,11 +101,11 @@ class SpeechDisplay extends HookWidget {
                   style: TextStyle(color: Colors.white),
                 ),
                 Text(
-                  speech.previousInput,
+                  speech.input,
                   style: TextStyle(color: Colors.white),
                 ),
                 Text(
-                  speech.previousOutput,
+                  speech.output.responseText,
                   style: TextStyle(color: Colors.white),
                 )
               ],

@@ -3,28 +3,10 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:ibm_watson_assistant/ibm_watson_assistant.dart';
 import 'package:ibm_watson_assistant/models.dart';
 
-// final botProvider = Provider<IbmWatsonAssistant>((ref) {
-//   load();
-
-//   final auth = IbmWatsonAssistantAuth(
-//     assistantId: env['ASSISTANT_ID'],
-//     url: env['ASSISTANT_URL'],
-//     apikey: env['API_KEY'],
-//   );
-
-//   print('chatbot init');
-
-//   return IbmWatsonAssistant(auth);
-// });
-
-// final sessionIdProvider = StateProvider<String>((_) => null);
-
 class ChatbotService {
   IbmWatsonAssistant bot;
   String _sessionId;
   String get sessionId => _sessionId;
-
-  IbmWatsonAssistantResponse lastRes;
 
   ChatbotService() {
     final auth = IbmWatsonAssistantAuth(
@@ -51,18 +33,14 @@ class ChatbotService {
     return _sessionId;
   }
 
-  Future<String> sendInput(String input) async {
+  Future<IbmWatsonAssistantResponse> sendInput(String input) async {
     input = input.replaceFirst('popcorn', '');
     print('Sending chatbot input: $input');
     if (_sessionId == null) await createSession();
     try {
-      final res = await bot.sendInput(input, sessionId: _sessionId);
-      print('sent input');
-      lastRes = res;
-      print(res.responseText);
-      return res.responseText;
+      return await bot.sendInput(input, sessionId: _sessionId);
     } catch (e) {
-      print('error: $e');
+      print('Error sending chatbot input: $input.\n$e');
       return e;
     }
   }

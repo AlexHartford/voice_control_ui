@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:ibm_watson_assistant/models.dart';
 import 'package:speech_to_text/speech_recognition_event.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 import 'package:speech_to_text/speech_to_text_provider.dart';
@@ -23,15 +24,15 @@ final sttStreamProvider = StreamProvider<SpeechRecognitionEvent>((ref) {
 
 class SpeechState {
   bool isListening;
-  String previousInput;
-  String previousOutput;
+  String input;
+  IbmWatsonAssistantResponse output;
   String currentInput;
 
   SpeechState({
     this.isListening = false,
-    this.previousInput = '',
-    this.previousOutput = '',
+    this.input = '',
     this.currentInput = '',
+    this.output,
   });
 }
 
@@ -49,8 +50,8 @@ class SpeechHandler extends StateNotifier<SpeechState> {
     state = SpeechState(
       isListening: !state.isListening,
       currentInput: state.currentInput,
-      previousInput: state.previousInput,
-      previousOutput: state.previousOutput,
+      input: state.input,
+      output: state.output,
     );
   }
 
@@ -58,7 +59,6 @@ class SpeechHandler extends StateNotifier<SpeechState> {
     final stt = ref.read(sttProvider)..listen(partialResults: true);
     final stream = ref.read(sttStreamProvider.stream);
     final chatbot = ref.read(ChatbotService.provider);
-    print('listening');
 
     stream.listen((event) async {
       print('event: ${event.eventType}');
@@ -68,8 +68,8 @@ class SpeechHandler extends StateNotifier<SpeechState> {
           if (event.recognitionResult.recognizedWords.contains('popcorn') || state.isListening) {
             state = SpeechState(
               isListening: false,
-              previousInput: event.recognitionResult.recognizedWords,
-              previousOutput: await chatbot.sendInput(state.previousOutput),
+              input: event.recognitionResult.recognizedWords,
+              output: await chatbot.sendInput(state.input),
               currentInput: state.currentInput,
             );
           }
@@ -80,8 +80,8 @@ class SpeechHandler extends StateNotifier<SpeechState> {
             print('Waking up!!');
             state = SpeechState(
               isListening: true,
-              previousInput: state.previousInput,
-              previousOutput: state.previousOutput,
+              input: state.input,
+              output: state.output,
               currentInput: event.recognitionResult.recognizedWords,
             );
           } else {
