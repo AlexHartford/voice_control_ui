@@ -7,6 +7,8 @@ import 'package:speech_to_text/speech_to_text_provider.dart';
 import 'package:state_notifier/state_notifier.dart';
 import 'package:voice_control_ui/chatbot.dart';
 
+const WAKE_WORD = 'board';
+
 final sttProvider = Provider<SpeechToTextProvider>((_) => SpeechToTextProvider(SpeechToText()));
 
 final sttInitProvider =
@@ -62,7 +64,7 @@ class SpeechHandler extends StateNotifier<SpeechState> {
 
       switch (event.eventType) {
         case SpeechRecognitionEventType.finalRecognitionEvent:
-          if (event.recognitionResult.recognizedWords.contains('popcorn') || state.isListening) {
+          if (event.recognitionResult.recognizedWords.contains(WAKE_WORD) || state.isListening) {
             final text = event.recognitionResult.recognizedWords;
             state = SpeechState(
               isListening: false,
@@ -79,7 +81,7 @@ class SpeechHandler extends StateNotifier<SpeechState> {
           stt.listen(partialResults: true);
           break;
         case SpeechRecognitionEventType.partialRecognitionEvent:
-          if (event.recognitionResult.recognizedWords.contains('popcorn') || state.isListening) {
+          if (event.recognitionResult.recognizedWords.contains(WAKE_WORD) || state.isListening) {
             print('Waking up!!');
             state = SpeechState(
               isListening: true,

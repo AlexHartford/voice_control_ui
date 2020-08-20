@@ -54,17 +54,9 @@ class TabViews extends HookWidget {
             TabBarView(
               controller: controller,
               children: [
-                Container(
-                  color: Colors.blue[300],
-                  child: Text('Scan'),
-                ),
-                Container(
-                  child: Text('Home'),
-                ),
-                Container(
-                  color: Colors.red[300],
-                  child: Text('Search'),
-                ),
+                Container(color: Colors.blue[300]),
+                Container(),
+                Container(color: Colors.red[300]),
               ],
             ),
             Align(

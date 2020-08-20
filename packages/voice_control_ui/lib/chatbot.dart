@@ -2,6 +2,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:ibm_watson_assistant/ibm_watson_assistant.dart';
 import 'package:ibm_watson_assistant/models.dart';
+import 'package:voice_control_ui/speech.dart';
 
 class ChatbotService {
   IbmWatsonAssistant bot;
@@ -34,7 +35,7 @@ class ChatbotService {
   }
 
   Future<IbmWatsonAssistantResponse> sendInput(String input) async {
-    input = input.replaceFirst('popcorn', '');
+    input = input.replaceFirst(WAKE_WORD, '');
     print('Sending chatbot input: $input');
     if (_sessionId == null) await createSession();
     try {
