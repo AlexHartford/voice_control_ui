@@ -26,12 +26,10 @@ class SpeechState {
   bool isListening;
   String input;
   IbmWatsonAssistantResponse output;
-  String currentInput;
 
   SpeechState({
     this.isListening = false,
     this.input = '',
-    this.currentInput = '',
     this.output,
   });
 }
@@ -49,7 +47,6 @@ class SpeechHandler extends StateNotifier<SpeechState> {
   toggleListening() {
     state = SpeechState(
       isListening: !state.isListening,
-      currentInput: state.currentInput,
       input: state.input,
       output: state.output,
     );
@@ -66,11 +63,11 @@ class SpeechHandler extends StateNotifier<SpeechState> {
       switch (event.eventType) {
         case SpeechRecognitionEventType.finalRecognitionEvent:
           if (event.recognitionResult.recognizedWords.contains('popcorn') || state.isListening) {
+            final text = event.recognitionResult.recognizedWords;
             state = SpeechState(
               isListening: false,
-              input: event.recognitionResult.recognizedWords,
-              output: await chatbot.sendInput(state.input),
-              currentInput: state.currentInput,
+              input: text,
+              output: await chatbot.sendInput(text),
             );
           }
           stt.listen(partialResults: true);
@@ -80,9 +77,8 @@ class SpeechHandler extends StateNotifier<SpeechState> {
             print('Waking up!!');
             state = SpeechState(
               isListening: true,
-              input: state.input,
+              input: event.recognitionResult.recognizedWords,
               output: state.output,
-              currentInput: event.recognitionResult.recognizedWords,
             );
           } else {
             print('Not waking up to: ${event.recognitionResult.recognizedWords}');

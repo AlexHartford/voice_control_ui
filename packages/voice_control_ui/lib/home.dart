@@ -97,15 +97,11 @@ class SpeechDisplay extends HookWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  speech.currentInput,
-                  style: TextStyle(color: Colors.white),
-                ),
-                Text(
                   speech.input,
                   style: TextStyle(color: Colors.white),
                 ),
                 Text(
-                  speech.output.responseText,
+                  speech.output?.responseText ?? 'N/A',
                   style: TextStyle(color: Colors.white),
                 )
               ],
