@@ -123,7 +123,6 @@ class ActivateVoiceButton extends HookWidget {
   @override
   Widget build(BuildContext context) {
     final fullWidth = MediaQuery.of(context).size.width;
-    // final listening = useProvider(listeningProvider).state;
     final listening = useProvider(SpeechHandler.provider.state).isListening;
 
     return AnimatedContainer(
@@ -139,7 +138,6 @@ class ActivateVoiceButton extends HookWidget {
           ),
         ),
         child: InkWell(
-          // onTap: () => context.read(listeningProvider).state ^= true,
           onTap: () => context.read(SpeechHandler.provider).toggleListening(),
           borderRadius: BorderRadius.all(
             Radius.circular(listening ? 0 : 25),

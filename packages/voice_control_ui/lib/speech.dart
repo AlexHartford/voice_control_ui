@@ -65,7 +65,7 @@ class SpeechHandler extends StateNotifier<SpeechState> {
 
       switch (event.eventType) {
         case SpeechRecognitionEventType.finalRecognitionEvent:
-          if (event.recognitionResult.recognizedWords.contains('popcorn')) {
+          if (event.recognitionResult.recognizedWords.contains('popcorn') || state.isListening) {
             state = SpeechState(
               isListening: false,
               previousInput: event.recognitionResult.recognizedWords,
@@ -76,16 +76,14 @@ class SpeechHandler extends StateNotifier<SpeechState> {
           stt.listen(partialResults: true);
           break;
         case SpeechRecognitionEventType.partialRecognitionEvent:
-          if (event.recognitionResult.recognizedWords.contains('popcorn') && !state.isListening) {
+          if (event.recognitionResult.recognizedWords.contains('popcorn') || state.isListening) {
+            print('Waking up!!');
             state = SpeechState(
               isListening: true,
               previousInput: state.previousInput,
               previousOutput: state.previousOutput,
               currentInput: event.recognitionResult.recognizedWords,
             );
-            print('Waking up!!');
-          } else if (state.isListening) {
-            print('Woke up from button press');
           } else {
             print('Not waking up to: ${event.recognitionResult.recognizedWords}');
           }
@@ -97,6 +95,9 @@ class SpeechHandler extends StateNotifier<SpeechState> {
         case SpeechRecognitionEventType.statusChangeEvent:
           print('Status changed: ${event.isListening ? 'listening' : 'stopped'}');
           // if (!event.isListening) stt.listen(partialResults: true);
+          // if (state.isListening) {
+          //   print('Woke up from button press');
+          // }
           break;
         case SpeechRecognitionEventType.soundLevelChangeEvent:
           break;
