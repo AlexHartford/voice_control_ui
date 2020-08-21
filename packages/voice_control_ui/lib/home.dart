@@ -5,6 +5,7 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:voice_control_ui/hybrid_widget.dart';
 import 'package:voice_control_ui/speech.dart';
+import 'package:voice_control_ui/test_page.dart';
 
 class Home extends HookWidget {
   const Home({Key key}) : super(key: key);
@@ -12,6 +13,15 @@ class Home extends HookWidget {
   @override
   Widget build(BuildContext context) {
     final controller = useTabController(initialLength: 3, initialIndex: 1);
+    final hybrid = useProvider(HybridService.provider);
+    hybrid.register(
+      'TEST_PAGE',
+      () => Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => TestPage(),
+        ),
+      ),
+    );
 
     return Scaffold(
       appBar: AppBar(
@@ -78,6 +88,14 @@ class TabViews extends HookWidget {
                       RaisedButton(
                         child: Text('ADD'),
                         onPressed: () => hybrid.trigger('ADD'),
+                      ),
+                      RaisedButton(
+                        child: Text('SEARCH'),
+                        onPressed: () => hybrid.trigger('SEARCH'),
+                      ),
+                      RaisedButton(
+                        child: Text('TEST_PAGE'),
+                        onPressed: () => hybrid.trigger('TEST_PAGE'),
                       ),
                     ],
                   ),
