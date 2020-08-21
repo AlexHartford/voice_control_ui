@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:voice_control_ui/hybrid_widget.dart';
 import 'package:voice_control_ui/speech.dart';
 
 class Home extends HookWidget {
@@ -19,9 +20,21 @@ class Home extends HookWidget {
         bottom: TabBar(
           controller: controller,
           tabs: [
-            Tab(key: PageStorageKey('Scan'), text: 'Scan'),
-            Tab(key: PageStorageKey('Home'), text: 'Home'),
-            Tab(key: PageStorageKey('Search'), text: 'Search'),
+            Hybrid(
+              key: ValueKey('ADD'),
+              onSelect: () => controller.animateTo(0),
+              child: Tab(key: PageStorageKey('Scan'), text: 'Scan'),
+            ),
+            Hybrid(
+              key: ValueKey('HOME'),
+              onSelect: () => controller.animateTo(1),
+              child: Tab(key: PageStorageKey('Home'), text: 'Home'),
+            ),
+            Hybrid(
+              key: ValueKey('SEARCH'),
+              onSelect: () => controller.animateTo(2),
+              child: Tab(key: PageStorageKey('Search'), text: 'Search'),
+            ),
           ],
         ),
       ),
@@ -39,6 +52,8 @@ class TabViews extends HookWidget {
   Widget build(BuildContext context) {
     final sttAvailable = useProvider(sttInitProvider);
 
+    final hybrid = useProvider(HybridService.provider);
+
     return sttAvailable.when(
       loading: () => Center(
         child: CircularProgressIndicator(),
@@ -54,8 +69,19 @@ class TabViews extends HookWidget {
             TabBarView(
               controller: controller,
               children: [
-                Container(color: Colors.blue[300]),
-                Container(),
+                Container(
+                  color: Colors.blue[300],
+                ),
+                Container(
+                  child: Column(
+                    children: [
+                      RaisedButton(
+                        child: Text('ADD'),
+                        onPressed: () => hybrid.trigger('ADD'),
+                      ),
+                    ],
+                  ),
+                ),
                 Container(color: Colors.red[300]),
               ],
             ),

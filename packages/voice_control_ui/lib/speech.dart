@@ -7,9 +7,12 @@ import 'package:speech_to_text/speech_to_text.dart';
 import 'package:speech_to_text/speech_to_text_provider.dart';
 import 'package:state_notifier/state_notifier.dart';
 import 'package:voice_control_ui/chatbot.dart';
+import 'package:voice_control_ui/hybrid_widget.dart';
 
 const WAKE_WORD = 'popcorn';
 const PAUSE_DURATION = Duration(seconds: 1);
+
+final ttsProvider = Provider<FlutterTts>((ref) => FlutterTts());
 
 final sttProvider = Provider<SpeechToTextProvider>((_) => SpeechToTextProvider(SpeechToText()));
 
@@ -41,7 +44,7 @@ class SpeechState {
 class SpeechHandler extends StateNotifier<SpeechState> {
   SpeechHandler(this.ref) : super(SpeechState()) {
     print('SpeechHandler init');
-    _listen();
+    // _listen();
   }
 
   final ProviderReference ref;
@@ -63,6 +66,8 @@ class SpeechHandler extends StateNotifier<SpeechState> {
 
     final tts = ref.read(ttsProvider);
 
+    final hybrid = ref.read(HybridService.provider);
+
     stream.listen((event) async {
       print('event: ${event.eventType}');
 
@@ -82,6 +87,16 @@ class SpeechHandler extends StateNotifier<SpeechState> {
               input: state.input,
               output: output,
             );
+            switch (output.output.intents.first.intent) {
+              case 'add_food':
+                hybrid.trigger('ADD');
+                break;
+              case 'search':
+                hybrid.trigger('SEARCH');
+                break;
+              default:
+                break;
+            }
             await tts.speak(output.responseText);
           }
           stt.listen(partialResults: true, pauseFor: PAUSE_DURATION);
@@ -111,8 +126,3 @@ class SpeechHandler extends StateNotifier<SpeechState> {
     });
   }
 }
-
-final ttsProvider = Provider<FlutterTts>((ref) {
-  final tts = FlutterTts();
-  return tts;
-});
