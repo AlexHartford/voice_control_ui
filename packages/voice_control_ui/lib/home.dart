@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:state_notifier/state_notifier.dart';
 import 'package:voice_control_ui/hybrid_widget.dart';
 import 'package:voice_control_ui/speech.dart';
 import 'package:voice_control_ui/test_page.dart';
@@ -53,6 +54,44 @@ class Home extends HookWidget {
   }
 }
 
+class ItemsNotifier extends StateNotifier<List<String>> {
+  ItemsNotifier({List<String> state}) : super(state ?? List<String>.generate(5, (i) => "ITEM$i"));
+
+  remove(int index) => state = state..removeAt(index);
+}
+
+final itemsProvider = StateNotifierProvider<ItemsNotifier>((_) => ItemsNotifier());
+
+class ItemList extends HookWidget {
+  ItemList({Key key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    final items = useProvider(itemsProvider.state);
+
+    return ListView.builder(
+      shrinkWrap: true,
+      itemCount: items.length,
+      itemBuilder: (_, index) {
+        return Hybrid(
+          key: ValueKey('ITEM$index'),
+          onSelect: () {
+            context.read(itemsProvider).remove(index);
+          },
+          child: Container(
+            color: Colors.grey[200].withOpacity(0.5),
+            child: ListTile(
+              title: Text(
+                items[index],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
 class TabViews extends HookWidget {
   const TabViews(this.controller, {Key key}) : super(key: key);
 
@@ -97,6 +136,11 @@ class TabViews extends HookWidget {
                         child: Text('TEST_PAGE'),
                         onPressed: () => hybrid.trigger('TEST_PAGE'),
                       ),
+                      RaisedButton(
+                        child: Text('REMOVE_ITEM1'),
+                        onPressed: () => hybrid.trigger('ITEM1'),
+                      ),
+                      ItemList(),
                     ],
                   ),
                 ),

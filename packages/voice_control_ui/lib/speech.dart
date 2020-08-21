@@ -94,6 +94,12 @@ class SpeechHandler extends StateNotifier<SpeechState> {
               case 'search':
                 hybrid.trigger('SEARCH');
                 break;
+              case 'test':
+                hybrid.trigger('TEST_PAGE');
+                break;
+              case 'remove_food':
+                hybrid.trigger('REMOVE');
+                break;
               default:
                 break;
             }
